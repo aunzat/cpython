@@ -70,15 +70,15 @@ The :mod:`filecmp` module defines the following functions:
 The :class:`dircmp` class
 -------------------------
 
-.. class:: dircmp(a, b, ignore=None, hide=None)
+.. class:: dircmp(a, b, ignore=None, hide=None, shallow=True)
 
    Construct a new directory comparison object, to compare the directories *a*
    and *b*.  *ignore* is a list of names to ignore, and defaults to
    :const:`filecmp.DEFAULT_IGNORES`.  *hide* is a list of names to hide, and
    defaults to ``[os.curdir, os.pardir]``.
 
-   The :class:`dircmp` class compares files by doing *shallow* comparisons
-   as described for :func:`filecmp.cmp`.
+   The *shallow* parameter has the same meaning and default value as for
+   :func:`filecmp.cmp`.
 
    The :class:`dircmp` class provides the following methods:
 
