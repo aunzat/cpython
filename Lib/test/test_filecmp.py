@@ -24,6 +24,8 @@ class FileCompareTestCase(unittest.TestCase):
         with open(self.name_same_shallow , 'wb') as output:
             # same file size; but different content (i.e. all zero)
             output.write(bytes(len(data.encode())))
+        shutil.copystat(self.name_diff, self.name_same_shallow)
+
         self.dir = tempfile.gettempdir()
 
     def tearDown(self):
