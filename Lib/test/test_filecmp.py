@@ -8,6 +8,17 @@ from test import support
 from test.support import os_helper
 
 
+def _create_file_shallow_equal(template_path, new_path):
+    """create a file with the same size and mtime but different content."""
+    shutil.copy2(template_path, new_path)
+    with open(new_path, 'r+b') as f:
+        next_char = bytearray(f.read(1))
+        next_char[0] = (next_char[0] + 1) % 256
+        f.seek(0)
+        f.write(next_char)
+    assert os.stat(new_path).st_size == os.stat(template_path).st_size
+    shutil.copystat(template_path, new_path)
+
 class FileCompareTestCase(unittest.TestCase):
     def setUp(self):
         self.name = os_helper.TESTFN
@@ -21,10 +32,11 @@ class FileCompareTestCase(unittest.TestCase):
 
         with open(self.name_diff, 'a+', encoding="utf-8") as output:
             output.write('An extra line.\n')
-        with open(self.name_same_shallow , 'wb') as output:
-            # same file size; but different content (i.e. all zero)
-            output.write(bytes(len(data.encode())))
-        shutil.copystat(self.name_diff, self.name_same_shallow)
+
+        for name in [self.name_same, self.name_diff]:
+            shutil.copystat(self.name, name)
+
+        _create_file_shallow_equal(self.name, self.name_same_shallow)
 
         self.dir = tempfile.gettempdir()
 
@@ -77,8 +89,17 @@ class DirCompareTestCase(unittest.TestCase):
 
         self.caseinsensitive = os.path.normcase('A') == os.path.normcase('a')
         data = 'Contents of file go here.\n'
-        for dir in (self.dir, self.dir_same, self.dir_same_shallow,
-                    self.dir_diff, self.dir_ignored, self.dir_diff_file):
+
+        shutil.rmtree(self.dir, True)
+        os.mkdir(self.dir)
+        subdir_path = os.path.join(self.dir, 'subdir')
+        os.mkdir(subdir_path)
+        dir_file_path = os.path.join(self.dir, "file")
+        with open(dir_file_path, 'w', encoding="utf-8") as output:
+            output.write(data)
+
+        for dir in (self.dir_same, self.dir_same_shallow,
+                    self.dir_diff, self.dir_diff_file):
             shutil.rmtree(dir, True)
             os.mkdir(dir)
             subdir_path = os.path.join(dir, 'subdir')
@@ -87,20 +108,21 @@ class DirCompareTestCase(unittest.TestCase):
                 fn = 'FiLe'     # Verify case-insensitive comparison
             else:
                 fn = 'file'
+
+            file_path = os.path.join(dir, fn)
+
             if dir is self.dir_same_shallow:
-                with open(os.path.join(dir, fn) , 'wb') as output:
-                    # same file size; but different content (i.e. all zero)
-                    output.write(bytes(len(data.encode())))
+                _create_file_shallow_equal(dir_file_path, file_path)
             else:
-                with open(os.path.join(dir, fn), 'w', encoding="utf-8") as output:
-                    output.write(data)
+                shutil.copy2(dir_file_path, file_path)
 
         with open(os.path.join(self.dir_diff, 'file2'), 'w', encoding="utf-8") as output:
             output.write('An extra file.\n')
 
-        # Add different file2
+        # Add different file2 with respect to dir_diff
         with open(os.path.join(self.dir_diff_file, 'file2'), 'w', encoding="utf-8") as output:
             output.write('Different contents.\n')
+
 
     def tearDown(self):
         for dir in (self.dir, self.dir_same, self.dir_diff,
@@ -297,7 +319,6 @@ class DirCompareTestCase(unittest.TestCase):
             dircmp_report()
             report_lines = stdout.getvalue().strip().split('\n')
             self.assertEqual(report_lines, expected_report_lines)
-
 
 if __name__ == "__main__":
     unittest.main()
